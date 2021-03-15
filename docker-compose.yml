@@ -1,0 +1,72 @@
+version: '3'
+
+services:
+  postgres:
+    restart: always
+    image: postgres:latest
+    # see: https://stackoverflow.com/a/60369496/2290820
+    # env_file: .env
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data/
+    container_name: postgres
+
+  # redis:
+  #   restart: always
+  #   image: redis:latest
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redisdata:/data
+
+  mongo:
+    image: mongo:4.4
+    ports:
+      - "27017:27017"
+    expose:
+    - 27017
+    volumes:
+      - ./mongo/db/:/data/db
+    command: ["--replSet", "rs0", "--bind_ip", "localhost,mongo"]
+
+  backend:
+    container_name: parse-server
+    # command: bash -c "curl -Lo ./wait https://github.com/ufoscout/docker-compose-wait/releases/download/2.7.3/wait && chmod +x ./wait && ./wait"
+    env_file: .env
+    restart: always
+    build:
+      context: ./back4app/
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+    expose:
+    - 8000
+    - 8080
+    - 1337
+    ports:
+      - 8000:8000
+      - 8080:8080
+      - 1337:1337
+    links:
+      - postgres
+      - mongo
+    hostname: parse-server
+    environment:
+      - WAIT_HOSTS=postgres:5432,mongo:27017
+      - WAIT_HOSTS_TIMEOUT=300
+      - WAIT_SLEEP_INTERVAL=30
+      - WAIT_HOST_CONNECT_TIMEOUT=30
+      - databaseURI="mongodb://mongo/parse"
+      - DATABASE_URI="mongodb://mongo/parse"
+      - APPLICATION_ID=APPLICATION_ID
+      - appId=APPLICATION_ID
+      - masterKey=masterKey
+      - PARSE_SERVER_MASTER_KEY=masterKey
+      - PARSE_SERVER_APPLICATION_ID=APPLICATION_ID
+volumes:
+  pgdata:

@@ -1,0 +1,3 @@
+[submodule "back4app"]
+	path = back4app
+	url = https://github.com/parse-community/parse-server
